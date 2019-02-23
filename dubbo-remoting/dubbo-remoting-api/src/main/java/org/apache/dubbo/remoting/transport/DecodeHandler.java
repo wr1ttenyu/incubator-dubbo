@@ -26,6 +26,9 @@ import org.apache.dubbo.remoting.RemotingException;
 import org.apache.dubbo.remoting.exchange.Request;
 import org.apache.dubbo.remoting.exchange.Response;
 
+/**
+ * 实现 AbstractChannelHandlerDelegate 抽象类，解码处理器，处理接收到的消息，实现了 Decodeable 接口的情况
+ */
 public class DecodeHandler extends AbstractChannelHandlerDelegate {
 
     private static final Logger log = LoggerFactory.getLogger(DecodeHandler.class);
@@ -52,6 +55,7 @@ public class DecodeHandler extends AbstractChannelHandlerDelegate {
     }
 
     private void decode(Object message) {
+        // 当类型是 Decodeable 时，调用 Decodeable#decode() 方法，进一步解析
         if (message != null && message instanceof Decodeable) {
             try {
                 ((Decodeable) message).decode();

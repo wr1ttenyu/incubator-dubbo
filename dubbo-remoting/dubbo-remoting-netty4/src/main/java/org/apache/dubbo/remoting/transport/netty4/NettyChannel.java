@@ -34,13 +34,17 @@ import java.util.concurrent.ConcurrentMap;
 
 /**
  * NettyChannel.
+ * 实现 AbstractChannel 抽象类，封装 Netty Channel 的通道实现类
  */
 final class NettyChannel extends AbstractChannel {
 
     private static final Logger logger = LoggerFactory.getLogger(NettyChannel.class);
 
+    // 在实际 Netty Handler 里（例如下面我们会看到的 NettyServerHandler 和 NettyClientHandler），每个方法参数里，
+    // 传递的是 io.netty.channel.Channel 对象。通过 NettyChannel.channelMap 中，获得对应的 NettyChannel 对象
     private static final ConcurrentMap<Channel, NettyChannel> channelMap = new ConcurrentHashMap<Channel, NettyChannel>();
 
+    // NettyChannel 是传入 channel 属性的装饰器，每个实现的方法，都会调用 channel
     private final Channel channel;
 
     private final Map<String, Object> attributes = new ConcurrentHashMap<String, Object>();
@@ -93,16 +97,21 @@ final class NettyChannel extends AbstractChannel {
 
     @Override
     public void send(Object message, boolean sent) throws RemotingException {
+        // 检查连接状态
         super.send(message, sent);
 
+        // 如果没有等待发送成功，默认成功。
         boolean success = true;
         int timeout = 0;
         try {
+            // 发送消息
             ChannelFuture future = channel.writeAndFlush(message);
+            // 等待发送成功
             if (sent) {
                 timeout = getUrl().getPositiveParameter(Constants.TIMEOUT_KEY, Constants.DEFAULT_TIMEOUT);
                 success = future.await(timeout);
             }
+            // 若发生异常，抛出
             Throwable cause = future.cause();
             if (cause != null) {
                 throw cause;
@@ -111,6 +120,7 @@ final class NettyChannel extends AbstractChannel {
             throw new RemotingException(this, "Failed to send message " + message + " to " + getRemoteAddress() + ", cause: " + e.getMessage(), e);
         }
 
+        // 发送失败，抛出异常
         if (!success) {
             throw new RemotingException(this, "Failed to send message " + message + " to " + getRemoteAddress()
                     + "in timeout(" + timeout + "ms) limit");
@@ -119,21 +129,25 @@ final class NettyChannel extends AbstractChannel {
 
     @Override
     public void close() {
+        // 标记关闭
         try {
             super.close();
         } catch (Exception e) {
             logger.warn(e.getMessage(), e);
         }
         try {
+            // 移除连接
             removeChannelIfDisconnected(channel);
         } catch (Exception e) {
             logger.warn(e.getMessage(), e);
         }
+        // 清空属性 attributes
         try {
             attributes.clear();
         } catch (Exception e) {
             logger.warn(e.getMessage(), e);
         }
+        // 关闭真正的通道 channel
         try {
             if (logger.isInfoEnabled()) {
                 logger.info("Close netty channel " + channel);

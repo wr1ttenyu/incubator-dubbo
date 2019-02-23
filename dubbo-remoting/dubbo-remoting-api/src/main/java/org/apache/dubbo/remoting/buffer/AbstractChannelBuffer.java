@@ -22,6 +22,10 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
+/**
+ * 实现 ChannelBuffer 接口，通道 Buffer 抽象类
+ * 在 AbstractChannelBuffer 实现的方法，都是父类重载的方法，真正实质的方法，需要子类来实现
+ */
 public abstract class AbstractChannelBuffer implements ChannelBuffer {
 
     private int readerIndex;

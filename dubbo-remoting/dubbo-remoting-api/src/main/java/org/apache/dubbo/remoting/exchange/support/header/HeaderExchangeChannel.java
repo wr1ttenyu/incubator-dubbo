@@ -35,6 +35,8 @@ import java.net.InetSocketAddress;
 
 /**
  * ExchangeReceiver
+ * 实现 ExchangeChannel 接口，基于消息头部( Header )的信息交换通道实现类
+ * HeaderExchangeChannel 是传入 channel 属性的装饰器，每个实现的方法，都会调用 channel
  */
 final class HeaderExchangeChannel implements ExchangeChannel {
 
@@ -53,10 +55,17 @@ final class HeaderExchangeChannel implements ExchangeChannel {
         this.channel = channel;
     }
 
+    /**
+     * 静态方法，创建 HeaderExchangeChannel 对象
+     *
+     * @param ch
+     * @return
+     */
     static HeaderExchangeChannel getOrAddChannel(Channel ch) {
         if (ch == null) {
             return null;
         }
+        // 通过 ch.attribute 的 CHANNEL_KEY 键值，保证有且仅有为 ch 属性，创建唯一的 HeaderExchangeChannel 对象
         HeaderExchangeChannel ret = (HeaderExchangeChannel) ch.getAttribute(CHANNEL_KEY);
         if (ret == null) {
             ret = new HeaderExchangeChannel(ch);
@@ -106,18 +115,23 @@ final class HeaderExchangeChannel implements ExchangeChannel {
         if (closed) {
             throw new RemotingException(this.getLocalAddress(), null, "Failed to send request " + request + ", cause: The channel " + this + " is closed!");
         }
-        // create request.
+        // create request. 创建请求
         Request req = new Request();
         req.setVersion(Version.getProtocolVersion());
+        //  需要响应
         req.setTwoWay(true);
         req.setData(request);
+        // 创建 DefaultFuture 对象
         DefaultFuture future = DefaultFuture.newFuture(channel, req, timeout);
         try {
+            // 发送请求
             channel.send(req);
         } catch (RemotingException e) {
+            // 发生异常，取消 DefaultFuture
             future.cancel();
             throw e;
         }
+        // 返回 DefaultFuture 对象
         return future;
     }
 
@@ -142,6 +156,7 @@ final class HeaderExchangeChannel implements ExchangeChannel {
             return;
         }
         closed = true;
+        // 等待请求继续 直到 等待超时
         if (timeout > 0) {
             long start = System.currentTimeMillis();
             while (DefaultFuture.hasFuture(channel)
@@ -153,6 +168,7 @@ final class HeaderExchangeChannel implements ExchangeChannel {
                 }
             }
         }
+        // 关闭通道
         close();
     }
 

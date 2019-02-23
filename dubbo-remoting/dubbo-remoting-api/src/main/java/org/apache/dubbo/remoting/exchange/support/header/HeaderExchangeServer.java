@@ -41,6 +41,7 @@ import static java.util.Collections.unmodifiableCollection;
 
 /**
  * ExchangeServerImpl
+ * 实现 ExchangeServer 接口，基于消息头部( Header )的信息交换服务器实现类
  */
 public class HeaderExchangeServer implements ExchangeServer {
 
@@ -101,13 +102,16 @@ public class HeaderExchangeServer implements ExchangeServer {
 
     @Override
     public void close(final int timeout) {
+        // 关闭
         startClose();
         if (timeout > 0) {
             final long max = (long) timeout;
             final long start = System.currentTimeMillis();
+            // 发送 READONLY 事件给所有 Client ，表示 Server 不可读了。
             if (getUrl().getParameter(Constants.CHANNEL_SEND_READONLYEVENT_KEY, true)) {
                 sendChannelReadOnlyEvent();
             }
+            // 等待请求完成
             while (HeaderExchangeServer.this.isRunning()
                     && System.currentTimeMillis() - start < max) {
                 try {
@@ -117,7 +121,9 @@ public class HeaderExchangeServer implements ExchangeServer {
                 }
             }
         }
+        // 关闭心跳定时器
         doClose();
+        // 关闭服务器
         server.close(timeout);
     }
 
@@ -126,12 +132,15 @@ public class HeaderExchangeServer implements ExchangeServer {
         server.startClose();
     }
 
+    /**
+     * 广播客户端，READONLY_EVENT 事件
+     */
     private void sendChannelReadOnlyEvent() {
         Request request = new Request();
         request.setEvent(Request.READONLY_EVENT);
-        request.setTwoWay(false);
+        request.setTwoWay(false); // 无需响应
         request.setVersion(Version.getProtocolVersion());
-
+        // 发送给所有 Client
         Collection<Channel> channels = getChannels();
         for (Channel channel : channels) {
             try {
@@ -202,6 +211,7 @@ public class HeaderExchangeServer implements ExchangeServer {
 
     @Override
     public void reset(URL url) {
+        // 重置服务器
         server.reset(url);
         try {
             if (url.hasParameter(Constants.HEARTBEAT_KEY)
@@ -211,6 +221,7 @@ public class HeaderExchangeServer implements ExchangeServer {
                 if (t < h * 2) {
                     throw new IllegalStateException("heartbeatTimeout < heartbeatInterval * 2");
                 }
+                // 重置定时任务
                 if (h != heartbeat || t != heartbeatTimeout) {
                     heartbeat = h;
                     heartbeatTimeout = t;

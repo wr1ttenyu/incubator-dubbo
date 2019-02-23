@@ -25,6 +25,7 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * ExchangeHandlerAdapter
+ * 实现 ExchangeHandler 接口，继承 TelnetHandlerAdapter 抽象类，信息交换处理器适配器抽象类
  */
 public abstract class ExchangeHandlerAdapter extends TelnetHandlerAdapter implements ExchangeHandler {
 

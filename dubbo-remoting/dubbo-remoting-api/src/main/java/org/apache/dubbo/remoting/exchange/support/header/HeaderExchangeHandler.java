@@ -39,6 +39,7 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * ExchangeReceiver
+ * 实现 ChannelHandlerDelegate 接口，基于消息头部( Header )的信息交换处理器实现类
  */
 public class HeaderExchangeHandler implements ChannelHandlerDelegate {
 
@@ -187,9 +188,12 @@ public class HeaderExchangeHandler implements ChannelHandlerDelegate {
 
     @Override
     public void received(Channel channel, Object message) throws RemotingException {
+        // 设置最后的读时间
         channel.setAttribute(KEY_READ_TIMESTAMP, System.currentTimeMillis());
+        // 创建 ExchangeChannel 对象
         final ExchangeChannel exchangeChannel = HeaderExchangeChannel.getOrAddChannel(channel);
         try {
+            // 处理请求( Request )
             if (message instanceof Request) {
                 // handle request.
                 Request request = (Request) message;

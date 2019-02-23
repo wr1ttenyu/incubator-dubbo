@@ -28,7 +28,7 @@ import org.apache.dubbo.remoting.transport.DecodeHandler;
 /**
  * DefaultMessenger
  *
- *
+ * 实现 Exchanger 接口，基于消息头部( Header )的信息交换者实现类
  */
 public class HeaderExchanger implements Exchanger {
 

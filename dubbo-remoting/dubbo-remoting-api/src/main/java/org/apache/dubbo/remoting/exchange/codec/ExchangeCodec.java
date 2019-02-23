@@ -44,8 +44,7 @@ import java.io.InputStream;
 /**
  * ExchangeCodec.
  *
- *
- *
+ * 继承 TelnetCodec 类，信息交换编解码器
  */
 public class ExchangeCodec extends TelnetCodec {
 
@@ -68,28 +67,32 @@ public class ExchangeCodec extends TelnetCodec {
 
     @Override
     public void encode(Channel channel, ChannelBuffer buffer, Object msg) throws IOException {
-        if (msg instanceof Request) {
+        if (msg instanceof Request) { // 请求
             encodeRequest(channel, buffer, (Request) msg);
-        } else if (msg instanceof Response) {
+        } else if (msg instanceof Response) { // 响应
             encodeResponse(channel, buffer, (Response) msg);
-        } else {
+        } else { // 提交给父类( Telnet ) 处理，目前是 Telnet 命令的结果。
             super.encode(channel, buffer, msg);
         }
     }
 
     @Override
     public Object decode(Channel channel, ChannelBuffer buffer) throws IOException {
+        // 读取 Header 数组
         int readable = buffer.readableBytes();
         byte[] header = new byte[Math.min(readable, HEADER_LENGTH)];
         buffer.readBytes(header);
+        // 解码
         return decode(channel, buffer, readable, header);
     }
 
     @Override
     protected Object decode(Channel channel, ChannelBuffer buffer, int readable, byte[] header) throws IOException {
         // check magic number.
+        // 通过 magic number 判断到，并非 Dubbo Exchange 信息交易的协议头，转交给父类 TelnetCodec 处理，一般此时是 Telnet 消息
         if (readable > 0 && header[0] != MAGIC_HIGH
                 || readable > 1 && header[1] != MAGIC_LOW) {
+            // 将 buffer 完全复制到 `header` 数组中。因为，上面的 `#decode(channel, buffer)` 方法，可能未读全
             int length = header.length;
             if (header.length < readable) {
                 header = Bytes.copyOf(header, readable);
@@ -122,6 +125,7 @@ public class ExchangeCodec extends TelnetCodec {
         ChannelBufferInputStream is = new ChannelBufferInputStream(buffer, len);
 
         try {
+            // 通过 magic number 判断到，符合 Dubbo Exchange 信息交易的协议头，ExchangeCodec 自己处理
             return decodeBody(channel, is, header);
         } finally {
             if (is.available() > 0) {
@@ -212,24 +216,30 @@ public class ExchangeCodec extends TelnetCodec {
 
     protected void encodeRequest(Channel channel, ChannelBuffer buffer, Request req) throws IOException {
         Serialization serialization = getSerialization(channel);
+        // `[0, 15]`：Magic Number
         // header.
         byte[] header = new byte[HEADER_LENGTH];
         // set magic number.
         Bytes.short2bytes(MAGIC, header);
 
+        // `[16, 20]`：Serialization 编号 && `[23]`：请求。
         // set request and serialization flag.
         header[2] = (byte) (FLAG_REQUEST | serialization.getContentTypeId());
 
+        // `[21]`：`event` 是否为事件。
         if (req.isTwoWay()) {
             header[2] |= FLAG_TWOWAY;
         }
+        // `[22]`：`twoWay` 是否需要响应。
         if (req.isEvent()) {
             header[2] |= FLAG_EVENT;
         }
 
+        // `[32 - 95]`：`id` 编号，Long 型。
         // set request id.
         Bytes.long2bytes(req.getId(), header, 4);
 
+        // 编码 `Request.data` 到 Body ，并写入到 Buffer
         // encode request data.
         int savedWriteIndex = buffer.writerIndex();
         buffer.writerIndex(savedWriteIndex + HEADER_LENGTH);
@@ -240,16 +250,19 @@ public class ExchangeCodec extends TelnetCodec {
         } else {
             encodeRequestData(channel, out, req.getData(), req.getVersion());
         }
+        // 释放资源
         out.flushBuffer();
         if (out instanceof Cleanable) {
             ((Cleanable) out).cleanup();
         }
         bos.flush();
         bos.close();
+        // 检查 Body 长度，是否超过消息上限。
         int len = bos.writtenBytes();
         checkPayload(channel, len);
         Bytes.int2bytes(len, header, 12);
 
+        // 写入 Header 到 Buffer
         // write
         buffer.writerIndex(savedWriteIndex);
         buffer.writeBytes(header); // write header.

@@ -28,6 +28,7 @@ import io.netty.channel.ChannelPromise;
 
 /**
  * NettyClientHandler
+ * 实现 io.netty.channel.ChannelDuplexHandler 类，NettyClient 的处理器
  */
 @io.netty.channel.ChannelHandler.Sharable
 public class NettyClientHandler extends ChannelDuplexHandler {
@@ -50,6 +51,7 @@ public class NettyClientHandler extends ChannelDuplexHandler {
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
+        // 不同于 NettyServerHandler 的该方法，会提交给 handler 继续处理。因为，客户端不会被连接，无需做连入 Channel 的管理
         NettyChannel channel = NettyChannel.getOrAddChannel(ctx.channel(), url, handler);
         try {
             handler.connected(channel);

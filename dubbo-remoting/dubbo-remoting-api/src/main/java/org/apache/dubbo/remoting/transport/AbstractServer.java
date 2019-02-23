@@ -36,6 +36,7 @@ import java.util.concurrent.ThreadPoolExecutor;
 
 /**
  * AbstractServer
+ * 实现 Server 接口，继承 AbstractEndpoint 抽象类，服务器抽象类，重点实现了公用的逻辑，同时抽象了开启、关闭等模板方法，供子类实现。
  */
 public abstract class AbstractServer extends AbstractEndpoint implements Server {
 
@@ -44,21 +45,31 @@ public abstract class AbstractServer extends AbstractEndpoint implements Server 
     ExecutorService executor;
     private InetSocketAddress localAddress;
     private InetSocketAddress bindAddress;
+    /**
+     * 服务器最大可接受连接数
+     */
     private int accepts;
+    /**
+     * 空闲超时时间，单位：毫秒
+     */
     private int idleTimeout;
 
     public AbstractServer(URL url, ChannelHandler handler) throws RemotingException {
         super(url, handler);
+        // 服务地址
         localAddress = getUrl().toInetSocketAddress();
-
+        // 绑定地址
         String bindIp = getUrl().getParameter(Constants.BIND_IP_KEY, getUrl().getHost());
         int bindPort = getUrl().getParameter(Constants.BIND_PORT_KEY, getUrl().getPort());
         if (url.getParameter(Constants.ANYHOST_KEY, false) || NetUtils.isInvalidLocalHost(bindIp)) {
             bindIp = Constants.ANYHOST_VALUE;
         }
         bindAddress = new InetSocketAddress(bindIp, bindPort);
+        // 服务器最大可接受连接数
         this.accepts = url.getParameter(Constants.ACCEPTS_KEY, Constants.DEFAULT_ACCEPTS);
+        // 空闲超时时间
         this.idleTimeout = url.getParameter(Constants.IDLE_TIMEOUT_KEY, Constants.DEFAULT_IDLE_TIMEOUT);
+        // 开启服务器
         try {
             doOpen();
             if (logger.isInfoEnabled()) {
@@ -68,7 +79,8 @@ public abstract class AbstractServer extends AbstractEndpoint implements Server 
             throw new RemotingException(url.toInetSocketAddress(), null, "Failed to bind " + getClass().getSimpleName()
                     + " on " + getLocalAddress() + ", cause: " + t.getMessage(), t);
         }
-        //fixme replace this with better method
+        // 获得线程池
+        // fixme replace this with better method
         DataStore dataStore = ExtensionLoader.getExtensionLoader(DataStore.class).getDefaultExtension();
         executor = (ExecutorService) dataStore.get(Constants.EXECUTOR_SERVICE_COMPONENT_KEY, Integer.toString(url.getPort()));
     }
@@ -131,7 +143,9 @@ public abstract class AbstractServer extends AbstractEndpoint implements Server 
 
     @Override
     public void send(Object message, boolean sent) throws RemotingException {
+        // 获得所有的客户端的通道
         Collection<Channel> channels = getChannels();
+        // 群发消息
         for (Channel channel : channels) {
             if (channel.isConnected()) {
                 channel.send(message, sent);
@@ -188,13 +202,15 @@ public abstract class AbstractServer extends AbstractEndpoint implements Server 
             ch.close();
             return;
         }
-
+        // 超过上限，关闭新的链接
         Collection<Channel> channels = getChannels();
         if (accepts > 0 && channels.size() > accepts) {
             logger.error("Close channel " + ch + ", cause: The server " + ch.getLocalAddress() + " connections greater than max config " + accepts);
+            // 关闭新的链接
             ch.close();
             return;
         }
+        // 连接
         super.connected(ch);
     }
 

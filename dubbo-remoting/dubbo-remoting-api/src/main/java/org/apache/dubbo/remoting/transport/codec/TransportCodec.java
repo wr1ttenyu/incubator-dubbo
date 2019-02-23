@@ -32,15 +32,21 @@ import java.io.OutputStream;
 
 /**
  * TransportCodec
+ * 传输编解码器，使用 Serialization 进行序列化/反序列化，直接编解码
  */
 public class TransportCodec extends AbstractCodec {
 
     @Override
     public void encode(Channel channel, ChannelBuffer buffer, Object message) throws IOException {
+        // 获得对应的 Serialization 对象，并创建用于反序列化的 ObjectOutput 对象。
+        // 不同的 Serialization 实现，对应不同的 ObjectOutput 实现类
+        // 获得反序列化的 ObjectOutput 对象
         OutputStream output = new ChannelBufferOutputStream(buffer);
         ObjectOutput objectOutput = getSerialization(channel).serialize(channel.getUrl(), output);
+        // 写入 ObjectOutput
         encodeData(channel, objectOutput, message);
         objectOutput.flushBuffer();
+        // 释放资源。目前，仅有 kryo 的 KryoObjectInput 、KryoObjectOutput 实现了 Cleanable 接口，需要释放资源。
         if (objectOutput instanceof Cleanable) {
             ((Cleanable) objectOutput).cleanup();
         }

@@ -30,6 +30,9 @@ public class HeartbeatTimerTask extends AbstractTimerTask {
 
     private static final Logger logger = LoggerFactory.getLogger(HeartbeatTimerTask.class);
 
+    /**
+     * 心跳间隔，单位：毫秒
+     */
     private final int heartbeat;
 
     HeartbeatTimerTask(ChannelProvider channelProvider, Long heartbeatTick, int heartbeat) {
@@ -42,6 +45,7 @@ public class HeartbeatTimerTask extends AbstractTimerTask {
         try {
             Long lastRead = lastRead(channel);
             Long lastWrite = lastWrite(channel);
+            // 最后读写的时间，任一超过心跳间隔，发送心跳
             if ((lastRead != null && now() - lastRead > heartbeat)
                     || (lastWrite != null && now() - lastWrite > heartbeat)) {
                 Request req = new Request();

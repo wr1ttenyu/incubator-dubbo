@@ -34,6 +34,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * DefaultMessageClient
+ * 实现 ExchangeClient 接口，基于消息头部( Header )的信息交换客户端实现类
  */
 public class HeaderExchangeClient implements ExchangeClient {
 
@@ -43,6 +44,9 @@ public class HeaderExchangeClient implements ExchangeClient {
     private int heartbeat;
     private int heartbeatTimeout;
 
+    /**
+     * 心跳检测定时器
+     */
     private HashedWheelTimer heartbeatTimer;
 
     public HeaderExchangeClient(Client client, boolean needHeartbeat) {
@@ -50,16 +54,19 @@ public class HeaderExchangeClient implements ExchangeClient {
             throw new IllegalArgumentException("client == null");
         }
         this.client = client;
+        // 创建 HeaderExchangeChannel 对象
         this.channel = new HeaderExchangeChannel(client);
         String dubbo = client.getUrl().getParameter(Constants.DUBBO_VERSION_KEY);
-
+        // 读取心跳相关配置
         this.heartbeat = client.getUrl().getParameter(Constants.HEARTBEAT_KEY, dubbo != null &&
                 dubbo.startsWith("1.0.") ? Constants.DEFAULT_HEARTBEAT : 0);
         this.heartbeatTimeout = client.getUrl().getParameter(Constants.HEARTBEAT_TIMEOUT_KEY, heartbeat * 3);
+        // 避免间隔太短
         if (heartbeatTimeout < heartbeat * 2) {
             throw new IllegalStateException("heartbeatTimeout < heartbeatInterval * 2");
         }
 
+        // 发起心跳定时器
         if (needHeartbeat) {
             long tickDuration = calculateLeastDuration(heartbeat);
             heartbeatTimer = new HashedWheelTimer(new NamedThreadFactory("dubbo-client-heartbeat", true), tickDuration,

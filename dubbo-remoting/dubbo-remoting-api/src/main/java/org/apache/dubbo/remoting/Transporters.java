@@ -40,6 +40,14 @@ public class Transporters {
         return bind(URL.valueOf(url), handler);
     }
 
+    /**
+     * 和 Transporter#bind(url, handler) 方法，对应
+     *
+     * @param url
+     * @param handlers
+     * @return
+     * @throws RemotingException
+     */
     public static Server bind(URL url, ChannelHandler... handlers) throws RemotingException {
         if (url == null) {
             throw new IllegalArgumentException("url == null");
@@ -53,6 +61,7 @@ public class Transporters {
         } else {
             handler = new ChannelHandlerDispatcher(handlers);
         }
+        // 调用 #getTransporter() 方法，基于 Dubbo SPI 机制，获得 Transporter$Adaptive 对象
         return getTransporter().bind(url, handler);
     }
 

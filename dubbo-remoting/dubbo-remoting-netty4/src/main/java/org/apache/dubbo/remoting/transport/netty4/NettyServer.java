@@ -62,6 +62,9 @@ public class NettyServer extends AbstractServer implements Server {
     private EventLoopGroup workerGroup;
 
     public NettyServer(URL url, ChannelHandler handler) throws RemotingException {
+        /* 设置线程名到 URL 上 */
+        // ChannelHandlers.wrap(handler, ExecutorUtil.setThreadName(url, SERVER_THREAD_POOL_NAME))
+        // 包装 ChannelHandler ，实现 Dubbo 线程模型的功能
         super(url, ChannelHandlers.wrap(handler, ExecutorUtil.setThreadName(url, SERVER_THREAD_POOL_NAME)));
     }
 
@@ -109,6 +112,7 @@ public class NettyServer extends AbstractServer implements Server {
             logger.warn(e.getMessage(), e);
         }
         try {
+            // 关闭连接到服务器的客户端通道
             Collection<org.apache.dubbo.remoting.Channel> channels = getChannels();
             if (channels != null && channels.size() > 0) {
                 for (org.apache.dubbo.remoting.Channel channel : channels) {
@@ -143,9 +147,9 @@ public class NettyServer extends AbstractServer implements Server {
     public Collection<Channel> getChannels() {
         Collection<Channel> chs = new HashSet<Channel>();
         for (Channel channel : this.channels.values()) {
-            if (channel.isConnected()) {
+            if (channel.isConnected()) { // 已连接，返回
                 chs.add(channel);
-            } else {
+            } else { // 未连接，移除
                 channels.remove(NetUtils.toAddressString(channel.getRemoteAddress()));
             }
         }

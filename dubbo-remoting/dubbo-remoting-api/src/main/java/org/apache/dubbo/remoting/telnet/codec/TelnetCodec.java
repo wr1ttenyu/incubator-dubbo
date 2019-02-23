@@ -167,11 +167,13 @@ public class TelnetCodec extends TransportCodec {
         if (isClientSide(channel)) {
             return toString(message, getCharset(channel));
         }
+        // 检查长度
         checkPayload(channel, readable);
         if (message == null || message.length == 0) {
             return DecodeResult.NEED_MORE_INPUT;
         }
 
+        // 处理退格的情况。
         if (message[message.length - 1] == '\b') { // Windows backspace echo
             try {
                 boolean doublechar = message.length >= 3 && message[message.length - 3] < 0; // double byte char
@@ -182,16 +184,18 @@ public class TelnetCodec extends TransportCodec {
             return DecodeResult.NEED_MORE_INPUT;
         }
 
+        // 关闭指令
         for (Object command : EXIT) {
             if (isEquals(message, (byte[]) command)) {
                 if (logger.isInfoEnabled()) {
                     logger.info(new Exception("Close channel " + channel + " on exit command: " + Arrays.toString((byte[]) command)));
                 }
-                channel.close();
+                channel.close(); // 关闭通道
                 return null;
             }
         }
 
+        // 使用历史的命令
         boolean up = endsWith(message, UP);
         boolean down = endsWith(message, DOWN);
         if (up || down) {

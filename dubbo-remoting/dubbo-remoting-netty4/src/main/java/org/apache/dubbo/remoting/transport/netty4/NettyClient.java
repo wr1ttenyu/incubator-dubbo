@@ -40,6 +40,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * NettyClient.
+ * 继承 AbstractNettyClient 抽象类，Netty 客户端实现类。
  */
 public class NettyClient extends AbstractClient {
 
@@ -49,9 +50,11 @@ public class NettyClient extends AbstractClient {
 
     private Bootstrap bootstrap;
 
+    // 通道，有 volatile 修饰符。因为客户端可能会断开重连，需要保证多线程的可见性。
     private volatile Channel channel; // volatile, please copy reference to use
 
     public NettyClient(final URL url, final ChannelHandler handler) throws RemotingException {
+        // #wrapChannelHandler(url, handler) 代码段，包装 ChannelHandler ，实现 Dubbo 线程模型的功能
         super(url, wrapChannelHandler(url, handler));
     }
 
@@ -66,6 +69,7 @@ public class NettyClient extends AbstractClient {
                 //.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, getTimeout())
                 .channel(NioSocketChannel.class);
 
+        // 设置连接超时时间
         if (getConnectTimeout() < 3000) {
             bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 3000);
         } else {
@@ -88,14 +92,17 @@ public class NettyClient extends AbstractClient {
     @Override
     protected void doConnect() throws Throwable {
         long start = System.currentTimeMillis();
+        // 连接服务器
         ChannelFuture future = bootstrap.connect(getConnectAddress());
         try {
+            // 等待连接成功或者超时
             boolean ret = future.awaitUninterruptibly(getConnectTimeout(), TimeUnit.MILLISECONDS);
-
+            // 连接成功
             if (ret && future.isSuccess()) {
                 Channel newChannel = future.channel();
                 try {
                     // Close old channel
+                    // 关闭老的连接
                     Channel oldChannel = NettyClient.this.channel; // copy reference
                     if (oldChannel != null) {
                         try {
@@ -108,6 +115,7 @@ public class NettyClient extends AbstractClient {
                         }
                     }
                 } finally {
+                    // 若 NettyClient 被关闭，关闭连接
                     if (NettyClient.this.isClosed()) {
                         try {
                             if (logger.isInfoEnabled()) {
@@ -118,13 +126,16 @@ public class NettyClient extends AbstractClient {
                             NettyClient.this.channel = null;
                             NettyChannel.removeChannelIfDisconnected(newChannel);
                         }
+                    // 设置新连接
                     } else {
                         NettyClient.this.channel = newChannel;
                     }
                 }
+            // 发生异常，抛出 RemotingException 异常
             } else if (future.cause() != null) {
                 throw new RemotingException(this, "client(url: " + getUrl() + ") failed to connect to server "
                         + getRemoteAddress() + ", error message is:" + future.cause().getMessage(), future.cause());
+            // 无结果（连接超时），抛出 RemotingException 异常
             } else {
                 throw new RemotingException(this, "client(url: " + getUrl() + ") failed to connect to server "
                         + getRemoteAddress() + " client-side timeout "

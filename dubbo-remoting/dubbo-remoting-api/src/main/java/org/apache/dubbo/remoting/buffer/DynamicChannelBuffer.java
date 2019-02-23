@@ -22,6 +22,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.ByteBuffer;
 
+/**
+ * 实现 AbstractChannelBuffer 抽象类，基于动态的 Buffer 实现类。或者说，基于传入的 ChannelBufferFactory 的 Buffer 实现类
+ */
 public class DynamicChannelBuffer extends AbstractChannelBuffer {
 
     private final ChannelBufferFactory factory;

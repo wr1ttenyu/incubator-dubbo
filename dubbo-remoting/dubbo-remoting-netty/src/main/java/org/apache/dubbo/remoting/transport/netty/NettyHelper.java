@@ -27,6 +27,7 @@ final class NettyHelper {
 
     public static void setNettyLoggerFactory() {
         InternalLoggerFactory factory = InternalLoggerFactory.getDefaultFactory();
+        // 设置 Netty 日志工厂为 DubboLoggerFactory
         if (factory == null || !(factory instanceof DubboLoggerFactory)) {
             InternalLoggerFactory.setDefaultFactory(new DubboLoggerFactory());
         }
@@ -34,6 +35,7 @@ final class NettyHelper {
 
     static class DubboLoggerFactory extends InternalLoggerFactory {
 
+        // 创建 DubboLogger 对象，并传入 name 对应的 Dubbo Logger 对象，而 Dubbo Logger 的对象，基于 Dubbo SPI 机制加载
         @Override
         public InternalLogger newInstance(String name) {
             return new DubboLogger(LoggerFactory.getLogger(name));
@@ -42,6 +44,9 @@ final class NettyHelper {
 
     static class DubboLogger extends AbstractInternalLogger {
 
+        /**
+         * 日志组件
+         */
         private Logger logger;
 
         DubboLogger(Logger logger) {

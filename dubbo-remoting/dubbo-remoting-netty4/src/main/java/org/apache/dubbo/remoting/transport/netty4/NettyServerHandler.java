@@ -31,14 +31,21 @@ import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * NettyServerHandler
+ * 实现 io.netty.channel.ChannelDuplexHandler 类，NettyServer 的处理器
  */
+// Sharable 注解主要是用来标示一个 ChannelHandler 可以被安全地共享，即可以在多个Channel 的 ChannelPipeline 中使用同一个ChannelHandler ，
+// 而不必每一个ChannelPipeline 都重新 new 一个新的 ChannelHandler 。
 @io.netty.channel.ChannelHandler.Sharable
 public class NettyServerHandler extends ChannelDuplexHandler {
 
+    /**
+     * Dubbo Channel 集合
+     */
     private final Map<String, Channel> channels = new ConcurrentHashMap<String, Channel>(); // <ip:port, channel>
 
     private final URL url;
 
+    // Dubbo ChannelHandler。NettyServerHandler 对每个事件的处理，会调用 handler 对应的方法。
     private final ChannelHandler handler;
 
     public NettyServerHandler(URL url, ChannelHandler handler) {
@@ -58,13 +65,17 @@ public class NettyServerHandler extends ChannelDuplexHandler {
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
+        // 创建 NettyChannel 对象
         NettyChannel channel = NettyChannel.getOrAddChannel(ctx.channel(), url, handler);
         try {
+            // 添加到 `channels` 中
             if (channel != null) {
                 channels.put(NetUtils.toAddressString((InetSocketAddress) ctx.channel().remoteAddress()), channel);
             }
+            // 提交给 `handler` 处理器。
             handler.connected(channel);
         } finally {
+            // 移除 NettyChannel 对象，若已断开
             NettyChannel.removeChannelIfDisconnected(ctx.channel());
         }
     }
